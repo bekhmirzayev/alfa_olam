@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alfa Olam: Raqamli Tahlil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F8FAFC;
+            color: #334155;
+        }
+
+        /* --- STYLES UNTOUCHED --- */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            background: white;
+            border-radius: 1rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        }
+
+        .topic-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .topic-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px -5px rgb(0 0 0 / 0.1);
+            border-color: #6366F1;
+        }
+
+        .modal {
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            transform: scale(0.95);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #F1F5F9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #6366F1;
+            border-radius: 4px;
+        }
+
+        .active-filter {
+            background-color: #4F46E5;
+            color: white;
+            border-color: #4F46E5;
+        }
+
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4F46E5;
+            cursor: pointer;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.3);
+        }
+
+        /* Hover link styles */
+        .source-link:hover {
+            color: #4F46E5;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body class="flex flex-col min-h-screen">
+
+    <!-- Modal (UNTOUCHED) -->
+    <div id="infoModal"
+        class="modal fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+        <div class="modal-content bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative">
+            <button onclick="closeModal()"
+                class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition p-2 bg-slate-100 rounded-full w-10 h-10 flex items-center justify-center">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <div class="bg-indigo-600 px-8 py-6">
+                <div class="flex items-center gap-4">
+                    <div id="modalIcon"
+                        class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-white text-2xl backdrop-blur-sm">
+                    </div>
+                    <div>
+                        <span id="modalCategory"
+                            class="text-indigo-200 text-xs font-bold uppercase tracking-wider">Category</span>
+                        <h3 id="modalTitle" class="text-2xl font-bold text-white mt-1">Title Here</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8 space-y-6">
+                <div>
+                    <h4 class="text-sm font-bold text-slate-400 uppercase mb-2">Qisqacha mazmun</h4>
+                    <p id="modalSummary" class="text-slate-800 font-medium text-lg leading-relaxed">Summary text...</p>
+                </div>
+                <div class="bg-indigo-50 p-5 rounded-xl border border-indigo-100">
+                    <h4 class="text-sm font-bold text-indigo-600 uppercase mb-2 flex items-center gap-2">
+                        <i class="fas fa-lightbulb"></i> Batafsil Tushuntirish
+                    </h4>
+                    <p id="modalDetail" class="text-slate-600 text-sm leading-7 text-justify">Detailed text...</p>
+                </div>
+                <div class="pt-4 border-t border-slate-100 flex justify-end">
+                    <button onclick="closeModal()"
+                        class="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-700 transition font-medium">Tushunarli</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white pt-16 pb-24 px-6 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 z-0"></div>
+        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 z-0">
+        </div>
+
+        <div class="max-w-6xl mx-auto relative z-10 text-center">
+            <div
+                class="inline-flex items-center gap-2 py-1 px-4 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold mb-6 tracking-widest uppercase">
+                <i class="fas fa-microscope"></i>
+                Tahliliy Hisobot
+            </div>
+
+            <h1 class="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight leading-tight">
+                Alfa Avlodini <span class="text-indigo-400">Tushunish</span> va <br class="hidden md:block" /> Raqamli
+                Balans
+            </h1>
+
+            <p class="text-slate-300 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed font-light">
+                Biz 2010-yildan keyin tug'ilgan "Raqamli Aborigenlar" (Alfa Avlod) bilan yashayapmiz.
+                Ular uchun texnologiya — bu vosita emas, balki tabiiy muhitdir.
+            </p>
+        </div>
+    </header>
+
+    <!-- NEW SECTION: Scientific Insights with LINKS -->
+    <main class="max-w-7xl mx-auto px-4 -mt-16 relative z-20 pb-16 space-y-16">
+
+        <!-- 3 Insight Cards with Links -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Fact 1: Who are they? -->
+            <div
+                class="bg-white p-8 rounded-2xl shadow-xl border-t-4 border-indigo-500 relative overflow-hidden group hover:translate-y-1 transition duration-300">
+                <div class="absolute top-0 right-0 p-4 opacity-10 text-indigo-600 group-hover:opacity-20 transition">
+                    <i class="fas fa-child text-6xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                    Alfa Avlodi (2010-2025)
+                </h3>
+                <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                    Ular insoniyat tarixidagi eng katta avlod bo'lishi kutilmoqda (2.5 milliard).
+                    Ularning o'ziga xosligi shundaki, ular "oyna ortida" (smartfon ekranlari qarshisida) ulg'aygan ilk
+                    to'liq raqamli avloddir.
+                </p>
+                <div class="text-xs text-slate-400 border-t border-slate-100 pt-2 flex items-center gap-1">
+                    <i class="fas fa-book-open"></i> Manba:
+                    <a href="https://mccrindle.com.au/article/topic/generation-alpha/" target="_blank"
+                        class="source-link ml-1 font-semibold text-indigo-500">McCrindle Research <i
+                            class="fas fa-external-link-alt text-[10px]"></i></a>
+                </div>
+            </div>
+
+            <!-- Fact 2: Attention Span -->
+            <div
+                class="bg-white p-8 rounded-2xl shadow-xl border-t-4 border-blue-500 relative overflow-hidden group hover:translate-y-1 transition duration-300">
+                <div class="absolute top-0 right-0 p-4 opacity-10 text-blue-600 group-hover:opacity-20 transition">
+                    <i class="fas fa-stopwatch text-6xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                    8 Soniyalik Diqqat
+                </h3>
+                <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                    Raqamli kontentning tezligi sababli, bolalarning o'rtacha diqqatni jamlash vaqti 12 soniyadan (2000
+                    yil) 8 soniyaga tushib ketdi.
+                    Bu "Goldfish effect" deb ataladi va ta'lim jarayoniga bevosita ta'sir qiladi.
+                </p>
+                <div class="text-xs text-slate-400 border-t border-slate-100 pt-2 flex items-center gap-1">
+                    <i class="fas fa-book-open"></i> Manba:
+                    <a href="https://dl.motamem.org/microsoft-attention-spans-research-report.pdf" target="_blank"
+                        class="source-link ml-1 font-semibold text-blue-500">Microsoft Attention Study <i
+                            class="fas fa-external-link-alt text-[10px]"></i></a>
+                </div>
+            </div>
+
+            <!-- Fact 3: The Reality -->
+            <div
+                class="bg-white p-8 rounded-2xl shadow-xl border-t-4 border-slate-500 relative overflow-hidden group hover:translate-y-1 transition duration-300">
+                <div class="absolute top-0 right-0 p-4 opacity-10 text-slate-800 group-hover:opacity-20 transition">
+                    <i class="fas fa-wifi text-6xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                    Raqamli Sotsializatsiya
+                </h3>
+                <p class="text-slate-600 text-sm leading-relaxed mb-4">
+                    Bugungi kunda 8-12 yoshli bolalar o'rtacha kuniga 4-6 soat vaqtini onlayn o'tkazmoqda.
+                    Muloqot, o'yin va ta'lim aralashib ketgan. Muammo texnologiyada emas, balki uni qanday boshqarishda.
+                </p>
+                <div class="text-xs text-slate-400 border-t border-slate-100 pt-2 flex items-center gap-1">
+                    <i class="fas fa-book-open"></i> Manba:
+                    <a href="https://www.commonsensemedia.org/research/the-common-sense-census-media-use-by-tweens-and-teens-2021"
+                        target="_blank" class="source-link ml-1 font-semibold text-slate-600">Common Sense Media <i
+                            class="fas fa-external-link-alt text-[10px]"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 1: Data Analytics (UNTOUCHED) -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-8 border-t border-slate-200">
+            <!-- Chart 1: Global Access -->
+            <div class="bg-white rounded-2xl p-6 shadow-lg border border-slate-100">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-bold text-slate-800">Global Smartfon Egaligi</h2>
+                    <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded">Manba: Common Sense Media</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="accessChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 2: Apps vs Time (Ebbinghaus Style - REVERSED COLORS) -->
+            <div class="bg-white rounded-2xl p-6 shadow-lg border border-slate-100">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Diqqat Taqsimoti</h2>
+                        <p class="text-xs text-slate-500">Eng ko'p vaqt sarflanadigan ilovalar (Qizil = Xavfli zona)</p>
+                    </div>
+                    <span class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded">Manba: Qustodio 2024</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="appTimeChart"></canvas>
+                </div>
+                <p class="mt-4 text-xs text-center text-slate-400 italic">
+                    *Egri chiziq bolaning diqqati qaysi ilovalarda "yo'qolayotganini" ko'rsatadi
+                </p>
+            </div>
+        </section>
+
+        <!-- Section 2: Curriculum (Cards) (UNTOUCHED) -->
+        <section>
+            <div class="text-center mb-10">
+                <span class="text-indigo-600 font-bold tracking-wider uppercase text-sm">Amaliy Yechimlar</span>
+                <h2 class="text-3xl font-bold text-slate-800 mt-2">Alfa Olam: Ota-onalar Uchun Mavzular</h2>
+                <p class="text-slate-500 mt-2 max-w-2xl mx-auto">Quyida xalqaro standartlarga asoslangan 15 ta asosiy
+                    mavzu jamlangan.</p>
+            </div>
+
+            <!-- Filters -->
+            <div class="flex flex-wrap justify-center gap-2 mb-8">
+                <button onclick="filterTopics('all')" id="btn-all"
+                    class="filter-btn active-filter px-5 py-2 rounded-full border border-slate-200 text-sm font-semibold transition-all">Barchasi</button>
+                <button onclick="filterTopics('basics')" id="btn-basics"
+                    class="filter-btn bg-white text-slate-600 hover:bg-slate-50 px-5 py-2 rounded-full border border-slate-200 text-sm font-semibold transition-all">Texnik
+                    Asoslar</button>
+                <button onclick="filterTopics('monitoring')" id="btn-monitoring"
+                    class="filter-btn bg-white text-slate-600 hover:bg-slate-50 px-5 py-2 rounded-full border border-slate-200 text-sm font-semibold transition-all">Nazorat</button>
+                <button onclick="filterTopics('safety')" id="btn-safety"
+                    class="filter-btn bg-white text-slate-600 hover:bg-slate-50 px-5 py-2 rounded-full border border-slate-200 text-sm font-semibold transition-all">Xavfsizlik</button>
+                <button onclick="filterTopics('psychology')" id="btn-psychology"
+                    class="filter-btn bg-white text-slate-600 hover:bg-slate-50 px-5 py-2 rounded-full border border-slate-200 text-sm font-semibold transition-all">Psixologiya</button>
+            </div>
+
+            <!-- Cards Grid -->
+            <div id="content-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- JS Injected -->
+            </div>
+        </section>
+
+        <!-- Section 3: Advanced Simulator (UNTOUCHED) -->
+        <section class="bg-indigo-900 rounded-3xl p-8 lg:p-12 text-white relative overflow-hidden shadow-2xl">
+            <!-- Decorative BG -->
+            <div
+                class="absolute top-0 right-0 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob">
+            </div>
+            <div
+                class="absolute bottom-0 left-0 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000">
+            </div>
+
+            <div class="relative z-10">
+                <div class="text-center mb-10">
+                    <h2 class="text-3xl font-bold">Balans Simulyatori</h2>
+                    <p class="text-indigo-200 max-w-2xl mx-auto mt-2">Texnik nazorat va ishonch o'rtasidagi muvozanatni
+                        toping va kelajak prognozini ko'ring.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+
+                    <!-- Controls -->
+                    <div
+                        class="lg:col-span-4 bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10 flex flex-col justify-center space-y-8">
+                        <div>
+                            <label class="flex justify-between text-sm font-medium mb-2">
+                                <span>Texnik Nazorat (Cheklovlar)</span>
+                                <span id="controlVal" class="text-indigo-300">50%</span>
+                            </label>
+                            <input type="range" id="controlRange" min="0" max="100" value="50"
+                                class="w-full h-2 bg-indigo-950 rounded-lg appearance-none cursor-pointer slider-thumb">
+                            <p class="text-xs text-indigo-300 mt-2">Family Link, vaqt cheklovi, ilovalarni bloklash
+                                darajasi.</p>
+                        </div>
+
+                        <div>
+                            <label class="flex justify-between text-sm font-medium mb-2">
+                                <span>Hissiy Muloqot (Ishonch)</span>
+                                <span id="trustVal" class="text-indigo-300">50%</span>
+                            </label>
+                            <input type="range" id="trustRange" min="0" max="100" value="50"
+                                class="w-full h-2 bg-indigo-950 rounded-lg appearance-none cursor-pointer slider-thumb">
+                            <p class="text-xs text-indigo-300 mt-2">Birga o'ynash, suhbatlashish, tushunish darajasi.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Visualization -->
+                    <div class="lg:col-span-4 bg-white rounded-2xl p-4 flex items-center justify-center shadow-inner">
+                        <div class="w-full h-64" id="radarChart"></div>
+                    </div>
+
+                    <!-- Forecast Results -->
+                    <div
+                        class="lg:col-span-4 bg-indigo-950/50 backdrop-blur-md rounded-2xl p-6 border border-indigo-500/30 flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-4 border-b border-indigo-800 pb-2">Natija: <span
+                                    id="archetype-title" class="text-yellow-400">Balanslashgan</span></h3>
+
+                            <div class="space-y-4 text-sm text-indigo-100">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-shield-alt w-6 text-center text-emerald-400"></i>
+                                    <div>
+                                        <span class="block text-xs text-indigo-400">Xavfsizlik Darajasi</span>
+                                        <div class="w-48 h-1.5 bg-indigo-900 rounded-full mt-1">
+                                            <div id="bar-safety"
+                                                class="h-1.5 rounded-full bg-emerald-400 transition-all duration-500"
+                                                style="width: 50%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-heart w-6 text-center text-rose-400"></i>
+                                    <div>
+                                        <span class="block text-xs text-indigo-400">Ota-ona bilan aloqa</span>
+                                        <div class="w-48 h-1.5 bg-indigo-900 rounded-full mt-1">
+                                            <div id="bar-bond"
+                                                class="h-1.5 rounded-full bg-rose-400 transition-all duration-500"
+                                                style="width: 50%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 bg-indigo-900/80 p-4 rounded-lg border-l-2 border-indigo-400">
+                            <h4 class="text-xs font-bold uppercase text-indigo-300 mb-1">3 Yillik Prognoz:</h4>
+                            <p id="forecast-text" class="text-sm italic leading-relaxed">
+                                Hisoblanmoqda...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Sources (References - Linked) (UNTOUCHED) -->
+        <section class="bg-white border-t border-slate-200 pt-10 pb-4">
+            <div class="text-center mb-6">
+                <h3
+                    class="text-sm font-bold text-slate-400 uppercase tracking-wider bg-slate-100 inline-block px-4 py-1 rounded-full">
+                    Foydalanilgan Manbaalar (References)</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm text-slate-600">
+                <a href="https://www.who.int/publications/i/item/9789240052123" target="_blank"
+                    rel="noopener noreferrer"
+                    class="group flex items-start gap-3 p-4 bg-slate-50 rounded-lg hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100">
+                    <i
+                        class="fas fa-book-medical text-indigo-500 mt-1 text-xl group-hover:scale-110 transition-transform"></i>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <strong class="block text-slate-800 text-base group-hover:text-indigo-700">WHO
+                                (JST)</strong>
+                            <i
+                                class="fas fa-external-link-alt text-[10px] text-slate-400 group-hover:text-indigo-500"></i>
+                        </div>
+                        <p class="text-xs mt-1 text-slate-600 group-hover:text-indigo-600">"Guidelines on physical
+                            activity & screen time" (2023)</p>
+                    </div>
+                </a>
+                <a href="https://www.commonsensemedia.org/research/the-common-sense-census-media-use-by-tweens-and-teens-2021"
+                    target="_blank" rel="noopener noreferrer"
+                    class="group flex items-start gap-3 p-4 bg-slate-50 rounded-lg hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100">
+                    <i
+                        class="fas fa-chart-pie text-indigo-500 mt-1 text-xl group-hover:scale-110 transition-transform"></i>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <strong class="block text-slate-800 text-base group-hover:text-indigo-700">Common Sense
+                                Media</strong>
+                            <i
+                                class="fas fa-external-link-alt text-[10px] text-slate-400 group-hover:text-indigo-500"></i>
+                        </div>
+                        <p class="text-xs mt-1 text-slate-600 group-hover:text-indigo-600">"The Common Sense Census:
+                            Media Use"</p>
+                    </div>
+                </a>
+                <a href="https://www.qustodio.com/en/research/" target="_blank" rel="noopener noreferrer"
+                    class="group flex items-start gap-3 p-4 bg-slate-50 rounded-lg hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100">
+                    <i
+                        class="fas fa-mobile-alt text-indigo-500 mt-1 text-xl group-hover:scale-110 transition-transform"></i>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <strong class="block text-slate-800 text-base group-hover:text-indigo-700">Qustodio</strong>
+                            <i
+                                class="fas fa-external-link-alt text-[10px] text-slate-400 group-hover:text-indigo-500"></i>
+                        </div>
+                        <p class="text-xs mt-1 text-slate-600 group-hover:text-indigo-600">"Born Connected" Annual
+                            Report 2024</p>
+                    </div>
+                </a>
+                <a href="https://www.apa.org/topics/social-media-internet/health-advisory-adolescent-social-media-use"
+                    target="_blank" rel="noopener noreferrer"
+                    class="group flex items-start gap-3 p-4 bg-slate-50 rounded-lg hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100">
+                    <i class="fas fa-brain text-indigo-500 mt-1 text-xl group-hover:scale-110 transition-transform"></i>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <strong class="block text-slate-800 text-base group-hover:text-indigo-700">APA
+                                (Psixologiya)</strong>
+                            <i
+                                class="fas fa-external-link-alt text-[10px] text-slate-400 group-hover:text-indigo-500"></i>
+                        </div>
+                        <p class="text-xs mt-1 text-slate-600 group-hover:text-indigo-600">"Health Advisory on Social
+                            Media Use"</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-900 text-slate-500 py-8 text-center text-sm">
+        <p>&copy; 2025 Alfa Olam (Raqamli Ota-ona) Loyihasi. Xalqaro tadqiqotlar asosida.</p>
+        <div class="mt-4 flex justify-center gap-6">
+            <a href="http://www.youtube.com/@Alfa-Olam" target="_blank" rel="noopener noreferrer"
+                class="text-slate-400 hover:text-red-600 transition-colors text-2xl">
+                <i class="fab fa-youtube"></i>
+            </a>
+            <a href="https://t.me/alfa_olam" target="_blank" rel="noopener noreferrer"
+                class="text-slate-400 hover:text-blue-500 transition-colors text-2xl">
+                <i class="fab fa-telegram"></i>
+            </a>
+        </div>
+    </footer>
+
+    <!-- JS Logic -->
+    <script>
+        // --- DATA STORE ---
+        const topics = [
+            {
+                id: 1, cat: 'basics', title: 'Google Account', icon: 'fas fa-id-badge',
+                summary: 'Raqamli shaxs guvohnomasi.',
+                detail: 'Bu shunchaki elektron pochta emas, bu bolaning raqamli pasporti. "Metaverse"ga kirish kaliti. Xalqaro qoidalarga ko\'ra (COPPA), 13 yoshgacha bo\'lgan bolalar akkaunti to\'liq ota-ona nazoratida bo\'lishi shart. Busiz raqamli identifikatsiya xavf ostida qoladi.'
+            },
+            {
+                id: 2, cat: 'basics', title: 'Family Link', icon: 'fas fa-sliders-h',
+                summary: 'Masofaviy boshqaruv tizimi.',
+                detail: 'Google Family Link — bu "josuslik" uskunasi emas, balki raqamli svetofor. U orqali siz ilovalarni yuklashga ruxsat berasiz, ekran vaqtini cheklaysiz va tunda telefonni "uxlash" rejimiga o\'tkazasiz. Eng samarali vosita.'
+            },
+            {
+                id: 3, cat: 'basics', title: 'Raqamli Iz', icon: 'fas fa-shoe-prints',
+                summary: 'Internet xotirasi o\'chmaydi.',
+                detail: 'Bolalar tushunishi kerak: bugun yozilgan "prikol" izoh 10 yildan keyin universitetga kirishda yoki viza olishda muammo tug\'dirishi mumkin. Internetda "Delete" tugmasi faqat ekraningizdan o\'chiradi, serverlardan emas.'
+            },
+            {
+                id: 4, cat: 'monitoring', title: 'Qidiruv Tarixi', icon: 'fas fa-search',
+                summary: 'Bolaning qiziqishlari oynasi.',
+                detail: 'History\'ni tekshirish — bolani jazolash uchun emas, uni tushunish uchun kerak. Agar u "depressiya belgilari" deb qidirgan bo\'lsa, bu SOS signali. Buni "maxfiylik buzilishi" deb emas, "xavfsizlik chorasi" deb qarang.'
+            },
+            {
+                id: 5, cat: 'monitoring', title: 'YouTube Kids', icon: 'fab fa-youtube',
+                summary: 'Xavfsiz video kontent.',
+                detail: 'Asosiy YouTube algoritmlari kattalar uchun ishlaydi va bolani "quyon uyasi" (rabbit hole) ga tortib ketadi. YouTube Kids yoki "Restricted Mode" esa zaharli kontentni 90% ga filtrlaydi.'
+            },
+            {
+                id: 6, cat: 'monitoring', title: 'PEGI Reyting', icon: 'fas fa-tags',
+                summary: 'O\'yinlar yosh cheklovi (12+, 18+).',
+                detail: 'GTA V (18+) o\'yinini 7 yoshli bolaga olib berish — unga "kattalar filmi"ni qo\'yib berish bilan teng. PEGI belgilari o\'yindagi zo\'ravonlik, so\'kinish va qo\'rqinch darajasini bildiradi.'
+            },
+            {
+                id: 7, cat: 'monitoring', title: 'Ekran Vaqti', icon: 'fas fa-clock',
+                summary: 'Kunlik me\'yor va sog\'liq.',
+                detail: 'JST tavsiyasi: 8-12 yoshlilar uchun ko\'ngilochar ekran vaqti 2 soatdan oshmasligi kerak. Ortiqchasi uyqu buzilishi, semirish va diqqat yetishmasligiga olib keladi.'
+            },
+            {
+                id: 8, cat: 'safety', title: 'Geolokatsiya', icon: 'fas fa-map-marker-alt',
+                summary: 'GPS orqali joylashuvni bilish.',
+                detail: 'Life360 yoki Family Link orqali joylashuvni bilish yaxshi, lekin bu bolada "ishonchsizlik" hissini uyg\'otmasligi kerak. Buni "nazorat" emas, "xavfsizlik" (masalan, telefon yo\'qolsa topish) deb tushuntirish lozim.'
+            },
+            {
+                id: 9, cat: 'safety', title: 'Fishing', icon: 'fas fa-fish',
+                summary: 'Firibgarlikdan himoya.',
+                detail: '"Roblox uchun tekin pullar" yoki "iPhone yutib oldingiz" — bu eng keng tarqalgan tuzoqlar. Bolaga hech qachon karta raqamini yoki parolni begona saytga kiritmaslikni o\'rgating.'
+            },
+            {
+                id: 10, cat: 'safety', title: 'VPN va Inkognito', icon: 'fas fa-user-secret',
+                summary: 'Yashirin xavflarni aniqlash.',
+                detail: 'Agar bolangiz telefonda VPN ishlatayotgan bo\'lsa, demak u ota-ona nazoratini aylanib o\'tmoqchi. Bu jiddiy signal. Texnik taqiqlar ishlamay qolganda, faqat ochiq suhbat yordam beradi.'
+            },
+            {
+                id: 11, cat: 'psychology', title: 'Dofamin', icon: 'fas fa-brain',
+                summary: 'Qisqa videolarga qaramlik.',
+                detail: 'TikTok va Shorts — bu "raqamli narkotik". 15 soniyalik videolar miyaga tezkor zavq (dofamin) beradi. Natijada bola uzoq multfilm yoki kitobga diqqatini jamlay olmay qoladi.'
+            },
+            {
+                id: 12, cat: 'psychology', title: 'Kiberbulling', icon: 'fas fa-bullhorn',
+                summary: 'Online zo\'ravonlik belgilari.',
+                detail: 'Internetdagi haqorat maktabdagidan og\'irroq. Belgilar: bola telefonni ko\'rganda xavotirlanadi, kayfiyati tushadi, maktabga borgisi kelmaydi. Darhol aralashish kerak.'
+            },
+            {
+                id: 13, cat: 'psychology', title: 'Roblox Chat', icon: 'fas fa-comments',
+                summary: 'Begonalar bilan muloqot xavfi.',
+                detail: 'O\'yinning o\'zi xavfsiz bo\'lishi mumkin, lekin chatlar — pedofillar va firibgarlar uchun ov maydoni. Qoida: "O\'yinda faqat hayotda taniydigan do\'stlaring bilan gaplash".'
+            },
+            {
+                id: 14, cat: 'psychology', title: 'Detoks', icon: 'fas fa-power-off',
+                summary: 'Gadjetsiz hududlar yaratish.',
+                detail: 'Uyda "Muqaddas hududlar" bo\'lsin: Oshxona va Yotoqxona. Ovqat paytida va uyqudan 1 soat oldin telefonlar yig\'ishtiriladi. Ota-ona o\'zi namuna bo\'lishi shart.'
+            },
+            {
+                id: 15, cat: 'psychology', title: 'Ishonch', icon: 'fas fa-hands-helping',
+                summary: 'Ochiq muloqot o\'rnatish.',
+                detail: 'Eng yaxshi filtr — bu bolaning o\'z ongi. Agar u xato qilsa (masalan, virus yuklab olsa), uni urishmang. Yordam bering. Shunda u keyingi safar muammoni yashirmaydi, sizga aytadi.'
+            },
+        ];
+
+        // --- CHARTS ---
+        function initCharts() {
+            // Chart 1: Global Access
+            new Chart(document.getElementById('accessChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: ['8 yosh', '10 yosh', '12 yosh', '14 yosh'],
+                    datasets: [{
+                        label: 'Smartfon %',
+                        data: [19, 42, 71, 91],
+                        backgroundColor: '#6366F1',
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, max: 100 }, x: { grid: { display: false } } }
+                }
+            });
+
+            // Chart 2: Apps vs Time (Ebbinghaus Line - RED to GREEN)
+            const ctxApp = document.getElementById('appTimeChart').getContext('2d');
+
+            // New Gradient: Red (High Usage) -> Yellow -> Green (Low Usage)
+            const gradient = ctxApp.createLinearGradient(0, 0, 400, 0);
+            gradient.addColorStop(0, '#EF4444'); // Red (Danger - High Mins)
+            gradient.addColorStop(0.5, '#FBBF24'); // Yellow
+            gradient.addColorStop(1, '#10B981'); // Green (Safe - Low Mins)
+
+            new Chart(ctxApp, {
+                type: 'line',
+                data: {
+                    labels: ['Roblox', 'TikTok', 'YouTube', 'Snapchat', 'Instagram', 'Minecraft'],
+                    datasets: [{
+                        label: 'Daqiqa / Kun',
+                        data: [130, 112, 107, 72, 63, 58],
+                        borderColor: '#94A3B8',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        // Colors reversed: High usage = Red, Low usage = Green
+                        pointBackgroundColor: [
+                            '#EF4444', // Red (Roblox)
+                            '#F87171', // Light Red (TikTok)
+                            '#F59E0B', // Orange (YouTube)
+                            '#FBBF24', // Yellow (Snapchat)
+                            '#34D399', // Light Green (Instagram)
+                            '#10B981'  // Green (Minecraft)
+                        ],
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 8,
+                        pointHoverRadius: 10,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            titleColor: '#1e293b',
+                            bodyColor: '#1e293b',
+                            borderColor: '#e2e8f0',
+                            borderWidth: 1,
+                            callbacks: { label: (c) => ` ${c.raw} daqiqalik vaqt sarfi` }
+                        }
+                    },
+                    scales: {
+                        y: { title: { display: true, text: 'Vaqt (Daqiqa)' }, beginAtZero: true, grid: { borderDash: [5, 5] } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // --- CARDS ---
+        function renderCards(filter) {
+            const grid = document.getElementById('content-grid');
+            grid.innerHTML = '';
+
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.className = 'filter-btn bg-white text-slate-600 hover:bg-slate-50 px-5 py-2 rounded-full border border-slate-200 text-sm font-semibold transition-all';
+            });
+            document.getElementById(`btn-${filter}`).className = 'filter-btn active-filter px-5 py-2 rounded-full border border-slate-200 text-sm font-semibold transition-all';
+
+            const data = filter === 'all' ? topics : topics.filter(t => t.cat === filter);
+
+            data.forEach(t => {
+                const div = document.createElement('div');
+                div.className = 'topic-card bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center text-center';
+                div.onclick = () => openModal(t.id);
+                div.innerHTML = `
+                    <div class="w-14 h-14 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 text-2xl mb-4">
+                        <i class="${t.icon}"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-800 text-lg mb-2">${t.title}</h3>
+                    <p class="text-xs text-slate-500 line-clamp-2">${t.summary}</p>
+                    <button class="mt-4 text-xs font-bold text-indigo-600 uppercase tracking-wide">Batafsil <i class="fas fa-arrow-right ml-1"></i></button>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        function filterTopics(f) { renderCards(f); }
+
+        // --- MODAL ---
+        function openModal(id) {
+            const topic = topics.find(t => t.id === id);
+            if (!topic) return;
+            document.getElementById('modalIcon').innerHTML = `<i class="${topic.icon}"></i>`;
+            document.getElementById('modalCategory').innerText = topic.cat.toUpperCase();
+            document.getElementById('modalTitle').innerText = topic.title;
+            document.getElementById('modalSummary').innerText = topic.summary;
+            document.getElementById('modalDetail').innerText = topic.detail;
+            document.getElementById('infoModal').classList.add('active');
+        }
+
+        function closeModal() { document.getElementById('infoModal').classList.remove('active'); }
+        document.getElementById('infoModal').addEventListener('click', (e) => { if (e.target === document.getElementById('infoModal')) closeModal(); });
+
+        // --- SIMULATOR ---
+        const controlEl = document.getElementById('controlRange');
+        const trustEl = document.getElementById('trustRange');
+
+        function updateSimulator() {
+            const c = parseInt(controlEl.value);
+            const t = parseInt(trustEl.value);
+
+            document.getElementById('controlVal').innerText = c + '%';
+            document.getElementById('trustVal').innerText = t + '%';
+
+            let safetyScore = (c * 0.7) + (t * 0.3);
+            let bondScore = t;
+            if (c > 80 && t < 40) bondScore -= 20;
+
+            document.getElementById('bar-safety').style.width = `${Math.min(100, safetyScore)}%`;
+            document.getElementById('bar-bond').style.width = `${Math.min(100, bondScore)}%`;
+
+            let archetype = "", forecast = "", titleColor = "";
+
+            if (c > 75 && t < 35) {
+                archetype = "Avtoritar (Politsiyachi)"; titleColor = "text-rose-400";
+                forecast = "Bola texnik cheklovlarni aylanib o'tishni o'rganadi. 3 yildan so'ng sizdan sirlar yashirish ehtimoli yuqori.";
+            } else if (c < 30 && t > 70) {
+                archetype = "Liberal (Erkin Do'st)"; titleColor = "text-yellow-400";
+                forecast = "Munosabatlaringiz ajoyib, lekin bola zararli kontent (pornografiya, zo'ravonlik) ta'siriga tushib qolishi mumkin.";
+            } else if (c < 30 && t < 30) {
+                archetype = "E'tiborsiz"; titleColor = "text-slate-400";
+                forecast = "Bola internetda yolg'iz. Kiberbulling yoki firibgarlar qurboni bo'lish xavfi eng yuqori darajada.";
+            } else if (c >= 50 && t >= 50) {
+                archetype = "Raqamli Mentor"; titleColor = "text-emerald-400";
+                forecast = "Eng barqaror model. Bola xavfsizlik qoidalarini tushunadi va muammo bo'lsa, birinchi sizga keladi.";
+            } else {
+                archetype = "Balanslash jarayoni"; titleColor = "text-white";
+                forecast = "Hozircha aniq strategiya yo'q. Ikkala tomonni ham kuchaytirish tavsiya etiladi.";
+            }
+
+            document.getElementById('archetype-title').innerText = archetype;
+            document.getElementById('archetype-title').className = titleColor;
+            document.getElementById('forecast-text').innerText = forecast;
+
+            const radarData = [{
+                type: 'scatterpolar', r: [c, safetyScore, t, bondScore, (100 - c)],
+                theta: ['Nazorat', 'Xavfsizlik', 'Ishonch', 'Aloqa', 'Erkinlik'],
+                fill: 'toself', fillcolor: 'rgba(99, 102, 241, 0.5)', line: { color: '#818CF8' }
+            }];
+
+            Plotly.newPlot('radarChart', radarData, {
+                polar: { radialaxis: { visible: true, range: [0, 100], color: '#aaa' }, angularaxis: { color: '#fff' }, bgcolor: 'rgba(0,0,0,0)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', margin: { t: 20, b: 20, l: 30, r: 30 }, showlegend: false,
+                font: { family: 'Plus Jakarta Sans', size: 10 }
+            }, { displayModeBar: false });
+        }
+
+        controlEl.addEventListener('input', updateSimulator);
+        trustEl.addEventListener('input', updateSimulator);
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            renderCards('all');
+            updateSimulator();
+        });
+    </script>
+</body>
+
+</html>
